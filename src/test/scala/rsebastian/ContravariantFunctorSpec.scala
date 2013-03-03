@@ -29,8 +29,8 @@ class ContravariantFunctorSpec extends Specification { def is =
       |""".stripMargin ! {
       val toLength = { (s: String) => s.length }
       val modulo5 = { (i: Int) => i % 5 }
-      (OrderingFunctor.contramap(toLength andThen modulo5)(intOrder).compare("hello", "hey") must beFalse).must_==(
-        OrderingFunctor.contramap(toLength)(OrderingFunctor.contramap(modulo5)(intOrder)).compare("hello", "hey") must beFalse
+      (OrderingFunctor.contramap(toLength andThen modulo5)(intOrder).compare("hello", "hey")).must_==(
+        OrderingFunctor.contramap(toLength)(OrderingFunctor.contramap(modulo5)(intOrder)).compare("hello", "hey")
       )
     }
 }
