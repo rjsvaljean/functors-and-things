@@ -26,5 +26,5 @@ object WhyFunctor {
 
 object OptionHelpers {
   def just[A](a: A): Option[A] = Some(a)
-  def void: Option[Nothing] = None
+  def void[A]: Option[A] = None
 }
