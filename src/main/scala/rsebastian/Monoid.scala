@@ -23,6 +23,13 @@ trait Monoid[T] extends Semigroup[T] {
   val identity: T
 }
 
+object Monoid {
+  implicit def ListMonoid[T] = new Monoid[List[T]] {
+    def append(m1: List[T], m2: List[T]) = m1 ::: m2
+    val identity: List[T] = Nil
+  }
+}
+
 trait Group[T] extends Monoid[T] {
   def inverse(t: T): T
 }
