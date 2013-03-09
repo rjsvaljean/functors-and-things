@@ -2,7 +2,7 @@ package rsebastian
 
 import org.specs2.Specification
 import rsebastian.OptionHelpers._
-import rsebastian.WhyApplicativeFunctor.{sequence, validate, getSizeOfItemsInTree, Bin, Leaf}
+import rsebastian.WhyApplicativeFunctor.{sequence, validate}
 import org.specs2.matcher.DataTables
 
 class ApplicativeFunctorSpec extends Specification with DataTables { def is =
@@ -26,7 +26,8 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
       }) must_== r
     }
   } ^
-  "lengths of values in a bin tree" ! {
-    getSizeOfItemsInTree(Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))) must_== List(9, 5, 5)
+  "can traverse and collect contents of binary tree" ! {
+    val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
+    Traversable.Traversers.contents(tree) must_== List("hello", "world", "and stuff")
   }
 }

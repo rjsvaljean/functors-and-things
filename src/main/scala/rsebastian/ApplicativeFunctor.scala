@@ -8,8 +8,38 @@ trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def fmap[A, B](f: A => B): F[A] => F[B] = (pure[A => B] andThen apply)(f)
 }
 
+case class Const[M, +A](value: M)
+
+
 trait Traversable[T[_]] {
   def traverse[F[_], A, B](f: A => F[B])(implicit app: ApplicativeFunctor[F]): T[A] => F[T[B]]
+
+  def contents[A]: (T[A]) => List[A] = { (ta: T[A]) =>
+    implicit def a = ApplicativeFunctor.ConstApplicativeFunctor[List[A]]
+    val traverser = traverse[({type λ[+α] = Const[List[A], α]})#λ, A, A]({i: A => Const[List[A], A](List(i))})
+    traverser(ta).value
+  }
+}
+
+
+
+sealed trait BinaryTree[A]
+case class Leaf[A](a: A) extends BinaryTree[A]
+case class Bin[A](left: BinaryTree[A], right: BinaryTree[A]) extends BinaryTree[A]
+
+
+
+object Traversable {
+  object Traversers {
+    def contents[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.contents(ta)
+  }
+
+  implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {
+    def traverse[F[+_], A, B](f: (A) => F[B])(implicit app: ApplicativeFunctor[F]): (BinaryTree[A]) => F[BinaryTree[B]] = {
+      case Bin(l, r) => app.apply(app.apply(app.pure((Bin.apply[B] _).curried))(traverse(f)(app)(l)))(traverse(f)(app)(r)) : F[BinaryTree[B]]
+      case Leaf(a)   => app.apply(app.pure(Leaf.apply[B] _))(f(a))
+    }
+  }
 }
 
 sealed trait Validation[+E, +X]
@@ -42,6 +72,14 @@ object ApplicativeFunctor {
       case (Success(foo), Success(sa)) => Success(foo(sa))
     }
   }
+
+  implicit def ConstApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Const[M, α]})#λ] {
+    def pure[A]: (A) => Const[M, A] = (a: A) => Const[M, A](implicitly[Monoid[M]].identity)
+
+    def apply[A, B](f: Const[M, A => B]): (Const[M, A]) => Const[M, B] = { (ca: Const[M, A]) =>
+      Const[M, B](implicitly[Monoid[M]].append(f.value, ca.value))
+    }
+  }
 }
 
 object WhyApplicativeFunctor {
@@ -69,31 +107,5 @@ object WhyApplicativeFunctor {
     xs.foldLeft(app.pure(List[T]())) { (sum, x) =>
       app.apply(app.fmap(curriedListAppend)(sum))(x)
     }
-  }
-
-  sealed trait BinaryTree[A]
-  case class Leaf[A](a: A) extends BinaryTree[A]
-  case class Bin[A](left: BinaryTree[A], right: BinaryTree[A]) extends BinaryTree[A]
-
-  object BinaryTreeTraversable extends Traversable[BinaryTree] {
-    def traverse[F[+_], A, B](f: (A) => F[B])(implicit app: ApplicativeFunctor[F]): (BinaryTree[A]) => F[BinaryTree[B]] = {
-      case Bin(l, r) => app.apply(app.apply(app.pure((Bin.apply[B] _).curried))(traverse(f)(app)(l)))(traverse(f)(app)(r)) : F[BinaryTree[B]]
-      case Leaf(a)   => app.apply(app.pure(Leaf.apply[B] _))(f(a))
-    }
-  }
-
-  case class Const[M, +A](value: M)
-
-  implicit def ConstApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Const[M, α]})#λ] {
-    def pure[A]: (A) => Const[M, A] = (a: A) => Const[M, A](implicitly[Monoid[M]].identity)
-
-    def apply[A, B](f: Const[M, A => B]): (Const[M, A]) => Const[M, B] = { (ca: Const[M, A]) =>
-      Const[M, B](implicitly[Monoid[M]].append(ca.value, f.value))
-    }
-  }
-
-  def getSizeOfItemsInTree(tree: BinaryTree[String]): List[Int] = {
-    val x = BinaryTreeTraversable.traverse[({type λ[+α] = Const[List[Int], α]})#λ, String, Int]({i: String => Const(List(i.size))})
-    x(tree).value
   }
 }
