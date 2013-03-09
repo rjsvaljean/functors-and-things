@@ -8,7 +8,7 @@ trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def fmap[A, B](f: A => B): F[A] => F[B] = (pure[A => B] andThen apply)(f)
 }
 
-case class Const[M, +A](value: M)
+case class Ident[A](value: A)
 
 
 trait Traversable[T[_]] {
@@ -18,8 +18,8 @@ trait Traversable[T[_]] {
   def count[A]: T[A] => Int = reduce((a: A) => 1)
 
   def reduce[A, M](reducer: A => M)(implicit m: Monoid[M]): (T[A]) => M = { (ta: T[A]) =>
-    implicit def a = ApplicativeFunctor.ConstApplicativeFunctor[M]
-    val traverser = traverse[({type λ[+α] = Const[M, α]})#λ, A, A]({i: A => Const[M, A](reducer(i))})
+    implicit def a = ApplicativeFunctor.IdentApplicativeFunctor[M]
+    val traverser = traverse[({type λ[+α] = Ident[M]})#λ, A, A]({i: A => Ident(reducer(i))})
     traverser(ta).value
   }
 }
@@ -77,11 +77,11 @@ object ApplicativeFunctor {
     }
   }
 
-  implicit def ConstApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Const[M, α]})#λ] {
-    def pure[A]: (A) => Const[M, A] = (a: A) => Const[M, A](implicitly[Monoid[M]].identity)
+  implicit def IdentApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Ident[M]})#λ] {
+    def pure[A]: (A) => Ident[M] = (a: A) => Ident(implicitly[Monoid[M]].identity)
 
-    def apply[A, B](f: Const[M, A => B]): (Const[M, A]) => Const[M, B] = { (ca: Const[M, A]) =>
-      Const[M, B](implicitly[Monoid[M]].append(f.value, ca.value))
+    def apply[A, B](f: Ident[M]): (Ident[M]) => Ident[M] = { (in: Ident[M]) =>
+      Ident[M](implicitly[Monoid[M]].append(f.value, in.value))
     }
   }
 }
