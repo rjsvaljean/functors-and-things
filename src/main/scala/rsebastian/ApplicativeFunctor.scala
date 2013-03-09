@@ -14,9 +14,12 @@ case class Const[M, +A](value: M)
 trait Traversable[T[_]] {
   def traverse[F[_], A, B](f: A => F[B])(implicit app: ApplicativeFunctor[F]): T[A] => F[T[B]]
 
-  def contents[A]: (T[A]) => List[A] = { (ta: T[A]) =>
-    implicit def a = ApplicativeFunctor.ConstApplicativeFunctor[List[A]]
-    val traverser = traverse[({type λ[+α] = Const[List[A], α]})#λ, A, A]({i: A => Const[List[A], A](List(i))})
+  def contents[A]: (T[A]) => List[A] = reduce({(i: A) => List(i)})
+  def count[A]: T[A] => Int = reduce((a: A) => 1)
+
+  def reduce[A, M](reducer: A => M)(implicit m: Monoid[M]): (T[A]) => M = { (ta: T[A]) =>
+    implicit def a = ApplicativeFunctor.ConstApplicativeFunctor[M]
+    val traverser = traverse[({type λ[+α] = Const[M, α]})#λ, A, A]({i: A => Const[M, A](reducer(i))})
     traverser(ta).value
   }
 }
@@ -32,6 +35,7 @@ case class Bin[A](left: BinaryTree[A], right: BinaryTree[A]) extends BinaryTree[
 object Traversable {
   object Traversers {
     def contents[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.contents(ta)
+    def count[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.count(ta)
   }
 
   implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {

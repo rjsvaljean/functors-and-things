@@ -28,6 +28,11 @@ object Monoid {
     def append(m1: List[T], m2: List[T]) = m1 ::: m2
     val identity: List[T] = Nil
   }
+
+  implicit object IntAdditiveMonoid extends Monoid[Int] {
+    def append(m1: Int, m2: Int) = m1 + m2
+    val identity: Int = 0
+  }
 }
 
 trait Group[T] extends Monoid[T] {
