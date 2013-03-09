@@ -18,7 +18,7 @@ trait Traversable[T[_]] {
   def count[A]: T[A] => Int = reduce((a: A) => 1)
 
   def reduce[A, M](reducer: A => M)(implicit m: Monoid[M]): (T[A]) => M = { (ta: T[A]) =>
-    implicit def a = ApplicativeFunctor.IdentApplicativeFunctor[M]
+    implicit def a = ApplicativeFunctor.MonoidApplicativeFunctor[M]
     val traverser = traverse[({type λ[+α] = Ident[M]})#λ, A, A]({i: A => Ident(reducer(i))})
     traverser(ta).value
   }
@@ -77,7 +77,7 @@ object ApplicativeFunctor {
     }
   }
 
-  implicit def IdentApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Ident[M]})#λ] {
+  implicit def MonoidApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Ident[M]})#λ] {
     def pure[A]: (A) => Ident[M] = (a: A) => Ident(implicitly[Monoid[M]].identity)
 
     def apply[A, B](f: Ident[M]): (Ident[M]) => Ident[M] = { (in: Ident[M]) =>
