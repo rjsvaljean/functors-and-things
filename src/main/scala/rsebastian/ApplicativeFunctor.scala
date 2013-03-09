@@ -22,6 +22,13 @@ trait Traversable[T[_]] {
     val traverser = traverse[({type λ[+α] = Ident[M]})#λ, A, A]({i: A => Ident(reducer(i))})
     traverser(ta).value
   }
+
+  def map[A, B](f: A => B): T[A] => T[B] = {(ta: T[A]) =>
+    implicit def a = ApplicativeFunctor.IdentApplicativeFunctor
+    val traverser = traverse[Ident, A, B]({i: A => Ident(f(i))})
+    traverser(ta).value
+  }
+
 }
 
 
@@ -36,6 +43,7 @@ object Traversable {
   object Traversers {
     def contents[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.contents(ta)
     def count[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.count(ta)
+    def map[T[_], A, B](f: A => B)(ta: T[A])(implicit tr: Traversable[T]) = tr.map(f)(ta)
   }
 
   implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {
@@ -83,6 +91,11 @@ object ApplicativeFunctor {
     def apply[A, B](f: Ident[M]): (Ident[M]) => Ident[M] = { (in: Ident[M]) =>
       Ident[M](implicitly[Monoid[M]].append(f.value, in.value))
     }
+  }
+
+  implicit object IdentApplicativeFunctor extends ApplicativeFunctor[Ident] {
+    def pure[A]: (A) => Ident[A] = Ident.apply[A]
+    def apply[A, B](f: Ident[A => B]): (Ident[A]) => Ident[B] = {(_ : Ident[A]).value} andThen f.value andThen Ident.apply
   }
 }
 

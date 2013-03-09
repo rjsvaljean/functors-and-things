@@ -33,5 +33,9 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
   "can count the number of elements in the tree" ! {
     val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
     Traversable.Traversers.count(tree) must_== 3
+  } ^
+  "can map over the element of the tree" ! {
+    val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
+    Traversable.Traversers.map((_: String).length)(tree) must_== Bin(Leaf(5), Bin(Leaf(5), Leaf(9)))
   }
 }
