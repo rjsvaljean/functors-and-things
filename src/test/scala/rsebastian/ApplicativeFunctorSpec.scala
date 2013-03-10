@@ -37,5 +37,9 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
   "can map over the element of the tree" ! {
     val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
     Traversable.Traversers.map((_: String).length)(tree) must_== Bin(Leaf(5), Bin(Leaf(5), Leaf(9)))
+  } ^
+  "can map and get contents simultaneously" ! {
+    val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
+    Traversable.Traversers.decompose(tree) must_== (Bin(Leaf(()), Bin(Leaf(()), Leaf(()))), List("hello", "world", "and stuff"))
   }
 }

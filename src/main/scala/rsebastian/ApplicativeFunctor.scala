@@ -10,6 +10,10 @@ trait ApplicativeFunctor[F[_]] extends Functor[F]{
 
 case class Ident[A](value: A)
 
+case class Product[F1[_], F2[_], A](first: F1[A], second: F2[A]) {
+  def tuple = (first, second)
+}
+
 
 trait Traversable[T[_]] {
   def traverse[F[_], A, B](f: A => F[B])(implicit app: ApplicativeFunctor[F]): T[A] => F[T[B]]
@@ -29,6 +33,20 @@ trait Traversable[T[_]] {
     traverser(ta).value
   }
 
+  def decompose[A]: T[A] => (T[Unit], List[A]) = { (ta: T[A]) =>
+    val shape: (A) => Ident[Unit] = (a: A) => Ident(())
+    val content: (A) => Ident[List[A]] = (a: A) => Ident(List(a))
+    val product: (A) => Product[Ident, ({type λ[α] = Ident[List[A]]})#λ, Unit] = { (a: A) =>
+      Product[Ident, ({type Φ[β] = Ident[List[A]]})#Φ, Unit](shape(a), content(a))
+    }
+
+    implicit def app = ApplicativeFunctor.ProductApplicativeFunctor[Ident, ({type Φ[β] = Ident[List[A]]})#Φ]
+
+    val traverser = traverse[({type λ[α] = Product[Ident, ({type Φ[β] = Ident[List[A]]})#Φ, α]})#λ, A, Unit](product)
+    val (Ident(s), Ident(c)) = traverser(ta).tuple
+    (s, c)
+  }
+
 }
 
 
@@ -44,6 +62,8 @@ object Traversable {
     def contents[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.contents(ta)
     def count[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.count(ta)
     def map[T[_], A, B](f: A => B)(ta: T[A])(implicit tr: Traversable[T]) = tr.map(f)(ta)
+    def shape[T[_], A, B](ta: T[A])(implicit tr: Traversable[T]) = tr.map((_: A) => ())(ta)
+    def decompose[T[_], A](ta: T[A])(implicit tr: Traversable[T]): (T[Unit], List[A]) = tr.decompose(ta)
   }
 
   implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {
@@ -96,6 +116,14 @@ object ApplicativeFunctor {
   implicit object IdentApplicativeFunctor extends ApplicativeFunctor[Ident] {
     def pure[A]: (A) => Ident[A] = Ident.apply[A]
     def apply[A, B](f: Ident[A => B]): (Ident[A]) => Ident[B] = {(_ : Ident[A]).value} andThen f.value andThen Ident.apply
+  }
+
+  implicit def ProductApplicativeFunctor[F1[_], F2[_]](implicit f1App: ApplicativeFunctor[F1], f2App: ApplicativeFunctor[F2]) = new ApplicativeFunctor[({type λ[α] = Product[F1, F2, α]})#λ]{
+    def pure[A]: (A) => Product[F1, F2, A] = { (a: A) => Product(f1App.pure(a), f2App.pure(a)) }
+
+    def apply[A, B](f: Product[F1, F2, (A) => B]): (Product[F1, F2, A]) => Product[F1, F2, B] = { (pa: Product[F1, F2, A]) =>
+      Product(f1App.apply(f.first)(pa.first), f2App.apply(f.second)(pa.second))
+    }
   }
 }
 
