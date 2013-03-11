@@ -53,6 +53,11 @@ trait Traversable[T[_]] {
     val application = (a: A) => app.apply(app.pure((u: Unit) => g(a)))(f(a))
     traverse[F, A, B](application)
   }
+
+  def disperse[F[_] : ApplicativeFunctor, A, B, C](f: F[B], g: A => B => C): T[A] => F[T[C]] = {
+    val app = implicitly[ApplicativeFunctor[F]]
+    traverse[F, A, C]({(a:A) => app.apply(app.pure(g(a)))(f)})
+  }
 }
 
 
@@ -64,16 +69,13 @@ case class Bin[A](left: BinaryTree[A], right: BinaryTree[A]) extends BinaryTree[
 
 
 object Traversable {
+  def of[T[_] : Traversable, A](t: T[A]) = implicitly[Traversable[T]]
   object Traversers {
     def contents[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.contents(ta)
     def count[T[_], A](ta: T[A])(implicit tr: Traversable[T]) = tr.count(ta)
     def map[T[_], A, B](f: A => B)(ta: T[A])(implicit tr: Traversable[T]) = tr.map(f)(ta)
     def shape[T[_], A, B](ta: T[A])(implicit tr: Traversable[T]) = tr.map((_: A) => ())(ta)
     def decompose[T[_], A](ta: T[A])(implicit tr: Traversable[T]): (T[Unit], List[A]) = tr.decompose(ta)
-    def collect[T[_], A, B](f: A => State[Int, Unit], g: A => B)(ta: T[A])(implicit tr: Traversable[T]) = {
-      val x = tr.collect[({type λ[+α] = State[Int, α]})#λ, A, B](f, g)
-      x(ta).transition(0)
-    }
   }
 
   implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {
