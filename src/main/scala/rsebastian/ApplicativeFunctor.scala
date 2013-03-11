@@ -1,6 +1,7 @@
 package rsebastian
 
 import rsebastian.OptionHelpers._
+import rsebastian.Monad.State
 
 trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def pure[A]: A => F[A]
@@ -47,6 +48,11 @@ trait Traversable[T[_]] {
     (s, c)
   }
 
+  def collect[F[_] : ApplicativeFunctor, A, B](f: A => F[Unit], g: A => B): T[A] => F[T[B]] = {
+    val app = implicitly[ApplicativeFunctor[F]]
+    val application = (a: A) => app.apply(app.pure((u: Unit) => g(a)))(f(a))
+    traverse[F, A, B](application)
+  }
 }
 
 
@@ -64,6 +70,10 @@ object Traversable {
     def map[T[_], A, B](f: A => B)(ta: T[A])(implicit tr: Traversable[T]) = tr.map(f)(ta)
     def shape[T[_], A, B](ta: T[A])(implicit tr: Traversable[T]) = tr.map((_: A) => ())(ta)
     def decompose[T[_], A](ta: T[A])(implicit tr: Traversable[T]): (T[Unit], List[A]) = tr.decompose(ta)
+    def collect[T[_], A, B](f: A => State[Int, Unit], g: A => B)(ta: T[A])(implicit tr: Traversable[T]) = {
+      val x = tr.collect[({type λ[+α] = State[Int, α]})#λ, A, B](f, g)
+      x(ta).transition(0)
+    }
   }
 
   implicit object BinaryTreeTraversable extends Traversable[BinaryTree] {

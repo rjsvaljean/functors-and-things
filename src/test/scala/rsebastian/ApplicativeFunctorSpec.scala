@@ -4,6 +4,7 @@ import org.specs2.Specification
 import rsebastian.OptionHelpers._
 import rsebastian.WhyApplicativeFunctor.{sequence, validate}
 import org.specs2.matcher.DataTables
+import rsebastian.Monad.State
 
 class ApplicativeFunctorSpec extends Specification with DataTables { def is =
   "sequence should work as expected" ^
@@ -41,5 +42,12 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
   "can map and get contents simultaneously" ! {
     val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Leaf("and stuff")))
     Traversable.Traversers.decompose(tree) must_== (Bin(Leaf(()), Bin(Leaf(()), Leaf(()))), List("hello", "world", "and stuff"))
+  } ^
+  "can collect state and map simultaneously" ! {
+    val tree: BinaryTree[String] = Bin(Leaf("hello"), Bin(Leaf("world"), Bin(Leaf("erm..."), Leaf("more stuff?"))))
+    def count(s: String) = State((i: Int) => (i + 1, ()))
+    def toLength(s: String) = s.length
+    Traversable.Traversers.collect(count, toLength)(tree) must_== (4, Bin(Leaf(5), Bin(Leaf(5), Bin(Leaf(6), Leaf(11)))))
   }
+
 }
