@@ -1,12 +1,19 @@
 package rsebastian
 
 import rsebastian.OptionHelpers._
-import rsebastian.Monad.State
 
 trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def pure[A]: A => F[A]
   def apply[A, B](f: F[A => B]): F[A] => F[B]
   def fmap[A, B](f: A => B): F[A] => F[B] = (pure[A => B] andThen apply)(f)
+  def compose[G[_]](gApp: ApplicativeFunctor[G]) = composedApp(this, gApp)
+
+  def liftA2[A, B, C](f: A => B => C): F[A] => F[B] => F[C] = {(fa: F[A]) => apply(fmap(f)(fa))}
+
+  private def composedApp[F1[_], G[_]](fApp: ApplicativeFunctor[F1], gApp: ApplicativeFunctor[G]) = new ApplicativeFunctor[({type λ[α] = F1[G[α]]})#λ] {
+    def pure[A]: (A) => F1[G[A]] = { (a: A) => fApp.pure(gApp.pure(a)) }
+    def apply[A, B](f: F1[G[(A) => B]]): (F1[G[A]]) => F1[G[B]] = fApp.liftA2({(gAtoB: G[A => B]) => gApp.apply(gAtoB)})(f)
+  }
 }
 
 case class Ident[A](value: A)

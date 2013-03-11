@@ -5,6 +5,8 @@ import rsebastian.OptionHelpers._
 import rsebastian.WhyApplicativeFunctor.{sequence, validate}
 import org.specs2.matcher.DataTables
 import rsebastian.Monad.State
+import rsebastian.Functor.ListFunctor
+import rsebastian.ApplicativeFunctor.{OptionApplicativeFunctor, ListApplicativeFunctor}
 
 class ApplicativeFunctorSpec extends Specification with DataTables { def is =
   "sequence should work as expected" ^
@@ -66,6 +68,12 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
 
       val x = Traversable.of(tree).measure[({type λ[+α] = State[String, α]})#λ, String, Int](check, toLength)
       x(tree).transition("") must_== ("||||", Bin(Leaf(5), Bin(Leaf(5), Bin(Leaf(6), Leaf(11)))))
-    }
+    } ^
+  "Applicative functors compose" ! {
+    ListApplicativeFunctor.compose(OptionApplicativeFunctor).apply[String, Int](
+      List(Some(_.length), None)
+    )(List(Some("hello"), Some("rat"))).must_==(
+      List(Some(5), Some(3), None, None))
+  }
 
 }
