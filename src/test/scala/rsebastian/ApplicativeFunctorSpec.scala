@@ -69,6 +69,13 @@ class ApplicativeFunctorSpec extends Specification with DataTables { def is =
       val x = Traversable.of(tree).measure[({type λ[+α] = State[String, α]})#λ, String, Int](check, toLength)
       x(tree).transition("") must_== ("||||", Bin(Leaf(5), Bin(Leaf(5), Bin(Leaf(6), Leaf(11)))))
     } ^
+    "assemble" ! {
+      val shape: BinaryTree[Unit] = Bin(Leaf(()), Bin(Leaf(()), Leaf(())))
+      val tr: Traversable[BinaryTree] = Traversable.of(shape)
+      (tr.assemble(shape, List(1, 2, 3)) must_== (List(), Some(Bin(Leaf(1), Bin(Leaf(2), Leaf(3)))))) and
+      (tr.assemble(shape, List(1, 2, 3, 4, 5)) must_== (List(4, 5), Some(Bin(Leaf(1), Bin(Leaf(2), Leaf(3)))))) and
+      (tr.assemble(shape, List(1)) must_== (List(), None))
+    } ^ bt ^
   "Applicative functors compose" ! {
     ListApplicativeFunctor.compose(OptionApplicativeFunctor).apply[String, Int](
       List(Some(_.length), None)

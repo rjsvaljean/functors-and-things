@@ -1,6 +1,7 @@
 package rsebastian
 
 import rsebastian.OptionHelpers._
+import rsebastian.Monad.State
 
 trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def pure[A]: A => F[A]
@@ -70,6 +71,17 @@ trait Traversable[T[_]] {
     val app = implicitly[ApplicativeFunctor[F]]
     traverse[F, A, B]({(a: A) => app.apply(app.pure({(u: Unit) => g(a)}))(f)})
   }
+
+  def assemble[A](shape: T[Unit], contents: List[A]): (List[A], Option[T[A]]) = {
+
+    implicit def y: ApplicativeFunctor[({type λ[α] = State[List[A], Option[α]]})#λ] = ApplicativeFunctor.of[({type λ[α] = State[List[A], α]})#λ].compose(ApplicativeFunctor.of[Option])
+
+    val x = traverse[({type λ[α] = State[List[A], Option[α]]})#λ, Unit, A]((u: Unit) => State[List[A], Option[A]]({s => s.headOption match {
+      case Some(h) => (s.tail, Some(h))
+      case None    => (Nil, None)
+    }}))
+    x(shape).transition(contents)
+  }
 }
 
 
@@ -103,6 +115,8 @@ case class Failure[E, X](e: E) extends Validation[E, X]
 case class Success[E, X](a: X) extends Validation[E, X]
 
 object ApplicativeFunctor {
+  def of[F[_] : ApplicativeFunctor] = implicitly[ApplicativeFunctor[F]]
+
   implicit object OptionApplicativeFunctor extends ApplicativeFunctor[Option] {
     def pure[A]: (A) => Option[A] = just
     def apply[A, B](f: Option[A => B]): Option[A] => Option[B] = f match {
