@@ -58,6 +58,11 @@ trait Traversable[T[_]] {
     val app = implicitly[ApplicativeFunctor[F]]
     traverse[F, A, C]({(a:A) => app.apply(app.pure(g(a)))(f)})
   }
+
+  def measure[F[_] : ApplicativeFunctor, A, B](f: F[Unit], g: A => B): T[A] => F[T[B]] = {
+    val app = implicitly[ApplicativeFunctor[F]]
+    traverse[F, A, B]({(a: A) => app.apply(app.pure({(u: Unit) => g(a)}))(f)})
+  }
 }
 
 
