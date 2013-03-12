@@ -1,5 +1,6 @@
 package rsebastian
 
+import rsebastian.InvariantFunctors.AAtoAFunctionsFunctor
 
 /*
  * Laws:
@@ -11,11 +12,21 @@ package rsebastian
  */
 trait Semigroup[T] {
   def append(m1: T, m2: T): T
+
+  def smap[A](f: T => A, g: A => T): Semigroup[A] = mkSemigroup(AAtoAFunctionsFunctor.xmap((f, g))((append _).curried))
+
+  private def mkSemigroup[A](curriedAppend: A => A => A) = new Semigroup[A] {
+    def append(m1: A, m2: A): A = curriedAppend(m1)(m2)
+  }
 }
 
 object Semigroup {
   implicit def SemiGroup[T] = new Semigroup[List[T]] {
     def append(m1: List[T], m2: List[T]) = m1 ::: m2
+  }
+
+  implicit def SemiGroupInt = new Semigroup[Int] {
+    def append(m1: Int, m2: Int) = m1 + m2
   }
 }
 
