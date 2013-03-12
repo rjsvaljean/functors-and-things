@@ -20,6 +20,12 @@ object InvariantFunctors {
     def xmap[A, B](f: (A => B, B => A)) = identity[T]
   }
 
+  object AtoAFunctionsFunctor extends InvariantFunctors[({type λ[α] = α => α})#λ] {
+    def xmap[A, B](f: ((A) => B, (B) => A)): ((A) => A) => (B) => B = { (a2a: A => A) =>
+      f._2 andThen a2a andThen f._1
+    }
+  }
+
   trait FunctorsAreExponentialFunctors[F[_]] extends Functor[F] with InvariantFunctors[F] {
     def fmap[A, B](f: A => B): F[A] => F[B]
     def xmap[A, B](f: (A => B, B => A)): F[A] => F[B] = fmap(f._1)
