@@ -30,21 +30,6 @@ case class Success[E, X](a: X) extends Validation[E, X]
 object ApplicativeFunctor {
   def of[F[_] : ApplicativeFunctor] = implicitly[ApplicativeFunctor[F]]
 
-  implicit object OptionApplicativeFunctor extends ApplicativeFunctor[Option] {
-    def pure[A]: (A) => Option[A] = just
-    def apply[A, B](f: Option[A => B]): Option[A] => Option[B] = f match {
-      case Some(fun) => _.map(fun)
-      case None      => _ => void[B]
-    }
-  }
-
-  implicit object ListApplicativeFunctor extends ApplicativeFunctor[List] {
-    def pure[A]: (A) => List[A] = a => List(a)
-    def apply[A, B](f: List[A => B]): List[A] => List[B] = xs => for {
-      anF <- f
-      x <- xs
-    } yield anF(x)
-  }
 
   class ValidationApplicativeFunctor[E](implicit sg: Semigroup[E]) extends ApplicativeFunctor[({type λ[α] = Validation[E, α]})#λ] {
     def pure[A]: (A) => Validation[E, A] = Success.apply

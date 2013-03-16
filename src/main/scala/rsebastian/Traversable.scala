@@ -1,6 +1,6 @@
 package rsebastian
 
-import Monad.State
+import Monad._
 
 trait Traversable[T[_]] {
   def traverse[F[_], A, B](f: A => F[B])(implicit app: ApplicativeFunctor[F]): T[A] => F[T[B]]

@@ -4,15 +4,17 @@ import org.specs2.Specification
 import rsebastian.OptionHelpers._
 import rsebastian.WhyApplicativeFunctor.{sequence, validate}
 import rsebastian.ApplicativeFunctor._
+import rsebastian.Monad._
 import org.specs2.matcher.DataTables
 
 
 class ApplicativeFunctorSpec extends Specification with DataTables {
   implicit def ValidationApp = new ValidationApplicativeFunctor[Int]()
+  val OptionApplicativeFunctor: ApplicativeFunctor[Option] = implicitly[ApplicativeFunctor[Option]]
   def pureId[A] = IdentApplicativeFunctor.pure[A]
   def appId[A, B] = IdentApplicativeFunctor.apply[A, B] _
   def pureOpt[A] = OptionApplicativeFunctor.pure[A]
-  def appOpt[A, B] = OptionApplicativeFunctor.apply[A, B] _
+  def appOpt[A, B] = implicitly[ApplicativeFunctor[Option]].apply[A, B] _
   def pureVal[A] = ValidationApp.pure[A]
   def appVal[A, B] = ValidationApp.apply[A, B] _
   def toInt: Double => Int = _.toInt
@@ -58,7 +60,7 @@ class ApplicativeFunctorSpec extends Specification with DataTables {
     }
   } ^
   "Applicative functors compose" ! {
-    ListApplicativeFunctor.compose(OptionApplicativeFunctor).apply[String, Int](
+    implicitly[ApplicativeFunctor[List]].compose(OptionApplicativeFunctor).apply[String, Int](
       List(Some(_.length), None)
     )(List(Some("hello"), Some("rat"))).must_==(
       List(Some(5), Some(3), None, None))

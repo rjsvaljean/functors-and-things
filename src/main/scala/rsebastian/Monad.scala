@@ -1,5 +1,7 @@
 package rsebastian
 
+import rsebastian.OptionHelpers._
+
 trait Monad[F[_]] extends ApplicativeFunctor[F] {
   def flatMap[A, B](f: A => F[B]): F[A] => F[B]
   override def fmap[A, B](f: A => B): F[A] => F[B] = flatMap(f andThen pure[B])
@@ -18,6 +20,27 @@ object Monad {
     }
 
     def pure[A]: (A) => State[S, A] = { (a: A) => State({(s: S) => (s, a)}) }
+  }
+
+
+  implicit object OptionMonad extends Monad[Option] {
+    def flatMap[A, B](f: A => Option[B]): Option[A] => Option[B] = {
+      case Some(a) => f(a)
+      case None    => None
+    }
+
+    def pure[A]: (A) => Option[A] = just
+  }
+
+  implicit object ListMonad extends Monad[List] {
+    def flatMap[A, B](f: (A) => List[B]): (List[A]) => List[B] = {(as: List[A]) =>
+      as match {
+        case a :: as1 => f(a) ::: flatMap(f)(as1)
+        case Nil      => Nil
+      }
+    }
+
+    def pure[A]: (A) => List[A] = List.apply(_: A)
   }
 
   case class State[S, A](transition: S => (S, A)) extends MonadicSyntax[A, ({type λ[α] = State[S, α]})#λ]
