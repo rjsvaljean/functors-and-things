@@ -9,6 +9,28 @@ import rsebastian.Functor.ListFunctor
 import rsebastian.ApplicativeFunctor.{OptionApplicativeFunctor, ListApplicativeFunctor}
 
 class ApplicativeFunctorSpec extends Specification with DataTables { def is =
+  "Applicative laws: " ^
+    "Identity" ! {
+      import Semigroup._
+      import ApplicativeFunctor._
+
+      implicit val ValidationApp = ValidationApplicativeFunctor[Int]
+      def pure1[A] = IdentApplicativeFunctor.pure[A]
+      def pure2[A] = OptionApplicativeFunctor.pure[A]
+      def pure3[A] = ValidationApp.pure[A]
+
+//      (pure1(identity[Int] _).<*>(pure1(1)) must_== pure1(1)) and
+//      (pure2(identity[Int] _).<*>(pure2(1)) must_== pure2(1)) and
+//      (faToAppA(ValidationMAB(pure3(identity[Int] _))).<*>(pure3(1)) must_== pure3(1))
+
+//      (pure1(1).<*>(pure1(identity[Int] _)) must_== pure1(1)) and
+//      (pure2(1).<*>(pure2(identity[Int] _)) must_== pure2(1)) and
+      (faToAppA(ValidationMAB(pure3(1))).<*>(pure3(identity[Int] _)) must_== pure3(1))
+//      (faToAppA[({type λ[α] = Validation[Int, α]})#λ, Int](ValidationMAB(pure3(1))).<*>(pure3(identity[Int] _)) must_== pure3(1))
+    } ^
+    "Composition" ! {
+      true must_== true
+    } ^ bt ^
   "sequence should work as expected" ^
     "for a list of Options" ! {
       (sequence(List[Option[Nothing]]()) must_== just(Nil)) and

@@ -1,7 +1,6 @@
 package rsebastian
 
 import rsebastian.OptionHelpers._
-import rsebastian.Monad.State
 
 trait ApplicativeFunctor[F[_]] extends Functor[F]{
   def pure[A]: A => F[A]
@@ -28,6 +27,37 @@ case class Failure[E, X](e: E) extends Validation[E, X]
 case class Success[E, X](a: X) extends Validation[E, X]
 
 object ApplicativeFunctor {
+  abstract class ApplicativeSyntax[F[_] : ApplicativeFunctor, A] {
+    def <*>[B](f: F[A => B]): F[B]
+    def ∘[B](f: A => B): F[B]
+  }
+
+  object ApplicativeSyntax {
+    def of[F[_] : ApplicativeFunctor, A](fa: F[A]): ApplicativeSyntax[F, A] =
+      new ApplicativeSyntax[F, A] {
+        def <*>[B](f: F[A => B]): F[B] = implicitly[ApplicativeFunctor[F]].apply(f)(fa)
+        def ∘[B](f: A => B): F[B] = implicitly[ApplicativeFunctor[F]].fmap(f)(fa)
+      }
+  }
+
+  def aToAppA[F[_] : ApplicativeFunctor, A](fa: F[A]) =
+    ApplicativeSyntax.of[F, A](fa)
+  def faToAppA[F[_] : ApplicativeFunctor, A](f: FA[F, A]) =
+    ApplicativeSyntax.of[F, A](f.value)
+
+
+  abstract class FA[F[_], A] {
+    val value: F[A]
+  }
+  object FA {
+    def of[F[_], A](a: F[A]) = new FA[F, A] {
+      val value: F[A] = a
+    }
+  }
+
+  def ValidationMAB[E, X](a: Validation[E, X]) =
+    FA.of[({type λ[α] = Validation[E, α]})#λ, X](a)
+
   def of[F[_] : ApplicativeFunctor] = implicitly[ApplicativeFunctor[F]]
 
   implicit object OptionApplicativeFunctor extends ApplicativeFunctor[Option] {
@@ -46,15 +76,18 @@ object ApplicativeFunctor {
     } yield anF(x)
   }
 
-  class ValidationApplicativeFunctor[E](implicit sg: Semigroup[E]) extends ApplicativeFunctor[({type λ[α] = Validation[E, α]})#λ] {
-    def pure[A]: (A) => Validation[E, A] = Success.apply
-    def apply[A, B](f: Validation[E, A => B]): (Validation[E, A]) => Validation[E, B] = va => (f, va) match {
-      case (Failure(e1), Failure(e2))  => Failure(sg.append(e1, e2))
-      case (Failure(e1), Success(_))   => Failure(e1)
-      case (Success(_), Failure(e2))   => Failure(e2)
-      case (Success(foo), Success(sa)) => Success(foo(sa))
+  implicit def ValidationApplicativeFunctor[E : Semigroup] =
+    new ApplicativeFunctor[({type λ[α] = Validation[E, α]})#λ] {
+      def pure[A]: (A) => Validation[E, A] = Success.apply
+      def apply[A, B](f: Validation[E, A => B]): (Validation[E, A]) => Validation[E, B] = { va =>
+        (f, va) match {
+          case (Failure(e1), Failure(e2))  => Failure(implicitly[Semigroup[E]].append(e1, e2))
+          case (Failure(e1), Success(_))   => Failure(e1)
+          case (Success(_), Failure(e2))   => Failure(e2)
+          case (Success(foo), Success(sa)) => Success(foo(sa))
+        }
+      }
     }
-  }
 
   implicit def MonoidApplicativeFunctor[M : Monoid] = new ApplicativeFunctor[({type λ[+α] = Ident[M]})#λ] {
     def pure[A]: (A) => Ident[M] = (a: A) => Ident(implicitly[Monoid[M]].identity)
@@ -93,7 +126,7 @@ object WhyApplicativeFunctor {
 
     case class Result(number: Int, string: String)
 
-    val app = new ValidationApplicativeFunctor[List[String]]()
+    val app = ValidationApplicativeFunctor[List[String]]
 
     app.apply(app.apply(app.pure((Result(_, _)).curried))(validNumber(number)))(validString(string))
   }
